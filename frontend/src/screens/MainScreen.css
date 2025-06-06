@@ -1,0 +1,11 @@
+#video-display {
+    height: 50vh;
+}
+
+.disabled {
+    /*
+    opacity: 0.3;
+    pointer-events: none;
+    */
+    display: none;
+}

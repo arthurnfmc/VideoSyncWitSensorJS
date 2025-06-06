@@ -3,13 +3,13 @@ import { useState, useEffect } from 'react';
 import D3SensorChart from '../components/D3SensorChart';
 import Loading from '../components/Loading';
 
-function DataEditingScreen({sensorFileName, videoFileName, advance}) {
-  const [editingSensor, setEditingSensor] = useState(false);
+function DataEditingScreen({sensorFileName, videoFileName, setProcessedData, setProcessedVideoStartAndEnd, advance}) {
   const [videoStart, setVideoStart] = useState(0);
   const [videoEnd, setVideoEnd] = useState(0);
   const [sensorData, setSensorData] = useState(0);
   const [sensorStart, setSensorStart] = useState(0);
   const [sensorEnd, setSensorEnd] = useState(0);
+  const [editingSensor, setEditingSensor] = useState(false);
   const [autoCalculateSensorEnd, setAutoCalculateSensorEnd] = useState(true);
   
   // Get sensor data
@@ -35,21 +35,21 @@ function DataEditingScreen({sensorFileName, videoFileName, advance}) {
     .catch(error => {
       console.error('Error fetching sensor data:', error);
     });
-  }, []);
+  }, [sensorFileName]);
 
   // Get the video size
   useEffect(() => {
     const vid = document.getElementById('video-player');
     vid.addEventListener('loadedmetadata', function() {
-      setVideoEnd(vid.duration.toFixed(2));
+      setVideoEnd(Math.round(parseFloat(vid.duration)*100)/100);
     }); 
   }, []);
 
   // Set video time function
   const setVideoTime = (setFunc) => {
     const vid = document.getElementById('video-player');
-    setFunc(vid.currentTime);
-  }
+    setFunc(Math.round(parseFloat(vid.currentTime)*100)/100);
+  };
 
   const handleChangeStart = (e) => {
     const floatVal = parseFloat(e.target.value);
@@ -62,12 +62,14 @@ function DataEditingScreen({sensorFileName, videoFileName, advance}) {
   };
 
   const handleAdvance = () => {
-    if (autoCalculateSensorEnd) {
-      if (sensorStart + (videoEnd - videoStart) > sensorData[sensorData.length - 1]['seconds_passed']) {
-        alert("O fim do sensor calculado ultrapassa o último dado do sensor.");
-        return;
-      }
-      setSensorEnd(sensorStart + (videoEnd - videoStart));
+    // Validacao de inputs
+    if (autoCalculateSensorEnd && sensorStart + (videoEnd - videoStart) > sensorData[sensorData.length - 1]['seconds_passed']) {
+      alert("O fim do sensor calculado ultrapassa o último dado do sensor.");
+      return;
+    }
+    if (!autoCalculateSensorEnd && sensorEnd > sensorData[sensorData.length - 1]['seconds_passed']) {
+      alert("O fim do sensor ultrapassa o último dado do sensor.");
+      return
     }
     if (videoStart >= videoEnd) {
       alert("O momento inicial do vídeo deve ser menor que o momento final.");
@@ -78,8 +80,52 @@ function DataEditingScreen({sensorFileName, videoFileName, advance}) {
       return;
     }
 
+    setProcessedVideoStartAndEnd([videoStart, videoEnd]);
 
-    advance();
+    // Dados cortados
+    fetch('http://localhost:5000/api/cut-data', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        data: sensorData,
+        start: sensorStart,
+        end: autoCalculateSensorEnd ? sensorStart + (videoEnd - videoStart) : sensorEnd,
+      }),
+    })
+    .then(response => response.json())
+    .then(data => {
+      setProcessedData(data);
+      advance();
+    })
+    .catch(error => {
+      console.error('Erro ao cortar dados:', error);
+      alert('Erro ao cortar dados do sensor. Veja o console para detalhes.');
+    });
+
+    // Video cortado
+    //fetch('http://localhost:5000/api/cut-video', {
+    //  method: 'POST',
+    //  headers: {
+    //    'Content-Type': 'application/json',
+    //  },
+    //  body: JSON.stringify({
+    //    filepath: videoFileName,
+    //    start: videoStart,
+    //    end: videoEnd,
+    //  }),
+    //})
+    //.then(response => response.json())
+    //.then(data => {
+    //  console.log("Video cortado:", data);
+    //  setProcessedVideoPath(data.cutVideoPath);
+    //  advance();
+    //})
+    //.catch(error => {
+    //  console.error('Erro ao cortar vídeo:');
+    //  alert('Erro ao cortar vídeo. Veja o console para detalhes.');
+    //});
   }
 
   return (
@@ -103,17 +149,18 @@ function DataEditingScreen({sensorFileName, videoFileName, advance}) {
             {sensorData!==0 ?
               <>
                 Início do Sensor:
-                <input type="text" step="any" value={sensorStart} onChange={handleChangeStart}/>
+                <input type="number" step="0.01" value={sensorStart} onChange={handleChangeStart}/>
               </>
               : ""}
             {sensorData!==0 && !autoCalculateSensorEnd ? 
               <>
                 Fim do Sensor:
-                <input type="text" step="any" value={sensorEnd} onChange={handleChangeEnd}/> 
+                <input type="number" step="0.01" value={sensorEnd} onChange={handleChangeEnd}/> 
               </>
               : ""}
               <button onClick={() => {setAutoCalculateSensorEnd(!autoCalculateSensorEnd);}}>
               {autoCalculateSensorEnd ? "Desativar Cálculo Automático do Fim" : "Ativar Cálculo Automático do Fim"} </button>
+              <button onClick={handleAdvance}>Avançar</button>
         </div>
     </div>
   );
