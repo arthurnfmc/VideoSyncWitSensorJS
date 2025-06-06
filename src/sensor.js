@@ -129,7 +129,7 @@ function groupData(data, method, groupN = 4) {
   throw new Error('Método de agrupamento inválido!');
 }
 
-// Função principal
+// Função para ler dados
 async function readData(fpath, colsToDrop = [], config = {}) {
   let df = readTSV(fpath);
   if (colsToDrop.length) df = dropColumns(df, colsToDrop);
@@ -147,6 +147,15 @@ async function readData(fpath, colsToDrop = [], config = {}) {
   return df;
 }
 
+async function cutData(df, start, end) {
+  df = df.filter(row => row.seconds_passed >= start && row.seconds_passed <= end);
+  const minValue = Math.min(...df.map(row => row.seconds_passed));
+  df.forEach(row => {
+    row.seconds_passed -= minValue; // Normalizando para começar do zero
+  });
+  return df;
+}
+
 // Exemplo de uso:
 //readData("../public/data/20250415150255.tsv", ['DeviceName', 'Version()', 'Battery level(%)'], {
 //  groupMethod: 'seconds_passed', // 'NbyN', 'seconds_passed', 'noGroup'
@@ -158,4 +167,4 @@ async function readData(fpath, colsToDrop = [], config = {}) {
 //  console.error("Erro ao processar dados:", err);
 //});
 
-module.exports = { readData };
+module.exports = { readData, cutData };

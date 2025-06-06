@@ -2,12 +2,17 @@ const express = require('express');
 const path = require('path');
 const sensor = require('./src/sensor');
 
+const cors = require('cors'); // REMOVER QUANDO ESTIVER PRONTO PARA PRODUÇÃO
+// DAR O NPM UNINSTALL TAMBÉM QUANDO TIVER PRONTO PARA PRODUÇÃO
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware to parse JSON and serve static files
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.use(cors()); // REMOVER QUANDO ESTIVER PRONTO PARA PRODUÇÃO
 
 // Endpoint to read sensor data
 /*
@@ -33,6 +38,18 @@ app.post('/api/sensor-data', async (req, res) => {
     res.status(500).send('Error processing sensor data');
   }
 
+});
+
+app.post('/api/cut-data', async (req, res) => {
+  const { data, start, end } = req.body;
+
+  try {
+    const cutData = await sensor.cutData(data, start, end);
+    res.json(cutData);
+  } catch (error) {
+    console.error('Error cutting data:', error);
+    res.status(500).send('Error cutting data');
+  }
 });
 
 app.get('/', (req, res) => {

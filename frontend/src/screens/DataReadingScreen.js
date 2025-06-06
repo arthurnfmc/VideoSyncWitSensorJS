@@ -1,4 +1,3 @@
-
 import './DataReadingScreen.css';
 import FileReader from "../components/FileReader";
 import { useState } from "react";
@@ -9,7 +8,7 @@ function DataReadingScreen({setSensorFileName, setVideoFileName, advance}) {
 
   return (
     <div className="App">
-      <h1>Leitura dos Dados</h1>
+      <h1>Leitura dos dados</h1>
       <h2>Selecione o arquivo de dados do sensor:</h2>
       <FileReader id="sensor-data-reader" setParentFileName={setSensorFileName} setHasSelectedFile={setHasSelectedSensor}/>
       <h2>Selecione o vídeo:</h2>
