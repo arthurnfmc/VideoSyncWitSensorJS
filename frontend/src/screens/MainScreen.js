@@ -3,8 +3,6 @@ import "./MainScreen.css";
 import { useState, useEffect, useRef } from "react";
 import D3SensorLineChart from "../components/D3SensorLineChart";
 
-
-
 function MainScreen({ videoFileName, processedData, processedVideoStartAndEnd}) {
     const [loading, setLoading] = useState(true);
     const videoRef = useRef();
@@ -30,11 +28,12 @@ function MainScreen({ videoFileName, processedData, processedVideoStartAndEnd}) 
         });
 
         setLoading(false);
-    }, []);
+    }, [processedVideoStartAndEnd]);
 
     return (
         <> 
         {loading ? <Loading></Loading>: ""}
+        <div className={"main-screen-layout"}>
         <div className={"video-container"+ (loading ? " disabled" : "")}>
             <h1>Vídeo: {videoFileName}</h1>
             <video ref={videoRef} id="video-display" controls>
@@ -49,6 +48,7 @@ function MainScreen({ videoFileName, processedData, processedVideoStartAndEnd}) 
             preSelectedFeatures={[]}
             videoStartTime={processedVideoStartAndEnd[0]}>
         </D3SensorLineChart>
+        </div>
         </>
     );
 }

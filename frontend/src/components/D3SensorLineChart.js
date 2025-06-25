@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import Select from 'react-select';
+import './D3SensorLineChart.css';
 
 const D3SensorLineChart = ({ data, preSelectedFeatures = [], videoRef, videoStartTime = 0}) => {
   const svgRef = useRef();
@@ -127,7 +128,7 @@ const D3SensorLineChart = ({ data, preSelectedFeatures = [], videoRef, videoStar
     animationId = requestAnimationFrame(updateLine);
 
     return () => cancelAnimationFrame(animationId);
-  }, [videoRef, selectedFeatures]); // dispara sempre que mudar o vídeo ou as features
+  }, [videoRef, selectedFeatures, videoStartTime]); // dispara sempre que mudar o vídeo ou as features
 
   const featureOptions = allFeatures.map(f => ({ value: f, label: f }));
 
@@ -136,17 +137,16 @@ const D3SensorLineChart = ({ data, preSelectedFeatures = [], videoRef, videoStar
   };
 
   return (
-    <div>
-      <h3>Selecione as features</h3>
-
+    <div className='flex-wrapper-graphic'>
       <Select
+        className="feature-select"
+        classNamePrefix="select"
         isMulti
         options={featureOptions}
         onChange={handleSelectChange}
         placeholder="Selecione as features..."
         defaultValue={preSelectedFeatures.map(f => ({ value: f, label: f }))}
       />
-
       <svg ref={svgRef}></svg>
     </div>
   );
