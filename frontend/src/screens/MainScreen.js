@@ -37,7 +37,7 @@ function MainScreen({ videoFileName, processedData, processedVideoStartAndEnd}) 
         <div className={"video-container"+ (loading ? " disabled" : "")}>
             <h1>Vídeo: {videoFileName}</h1>
             <video ref={videoRef} id="video-display" controls>
-                <source src={videoFileName} type="video/mp4"/>
+                <source src={"/video/"+videoFileName} type="video/mp4"/>
                 Your browser does not support the video tag.
             </video>
         </div>

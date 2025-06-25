@@ -1,19 +1,19 @@
 const express = require('express');
 const path = require('path');
 const sensor = require('./src/sensor');
-const video = require('./src/video');
+// const video = require('./src/video');
 
-const cors = require('cors'); // REMOVER QUANDO ESTIVER PRONTO PARA PRODUÇÃO
+// const cors = require('cors'); // REMOVER QUANDO ESTIVER PRONTO PARA PRODUÇÃO
 // DAR O NPM UNINSTALL TAMBÉM QUANDO TIVER PRONTO PARA PRODUÇÃO
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware to parse JSON and serve static files
-app.use(express.json({ limit: '500mb' }));
+app.use(express.json({ limit: '2500mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use(cors()); // REMOVER QUANDO ESTIVER PRONTO PARA PRODUÇÃO
+//app.use(cors()); // REMOVER QUANDO ESTIVER PRONTO PARA PRODUÇÃO
 
 // Endpoint to read sensor data
 /*
@@ -52,20 +52,20 @@ app.post('/api/cut-data', async (req, res) => {
   }
 });
 
-app.post('/api/cut-video', async (req, res) => {
-  const { filepath, start, end } = req.body;
-  try {
-    const cutVideoPath = await video.cutVideo(filepath, start, end, "E:/Programas/ExpressWit/frontend/public/output.mp4");
-    console.log('Cut video path:', cutVideoPath);
-    res.json({ cutVideoPath });
-  } catch (error) {
-    console.error('Error cutting data:', error);
-    res.status(500).send('Error cutting data');
-  }
-});
+//app.post('/api/cut-video', async (req, res) => {
+//  const { filepath, start, end } = req.body;
+//  try {
+//    const cutVideoPath = await video.cutVideo(filepath, start, end, "E:/Programas/ExpressWit/frontend/public/output.mp4");
+//    console.log('Cut video path:', cutVideoPath);
+//    res.json({ cutVideoPath });
+//  } catch (error) {
+//    console.error('Error cutting data:', error);
+//    res.status(500).send('Error cutting data');
+//  }
+//});
 
 app.get('/', (req, res) => {
-  res.send('Welcome to the Express server!');
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {

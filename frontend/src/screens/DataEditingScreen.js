@@ -14,7 +14,7 @@ function DataEditingScreen({sensorFileName, videoFileName, setProcessedData, set
   
   // Get sensor data
   useEffect(() => {
-    fetch('http://localhost:5000/api/sensor-data', {
+    fetch('/api/sensor-data', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -83,7 +83,7 @@ function DataEditingScreen({sensorFileName, videoFileName, setProcessedData, set
     setProcessedVideoStartAndEnd([videoStart, videoEnd]);
 
     // Dados cortados
-    fetch('http://localhost:5000/api/cut-data', {
+    fetch('/api/cut-data', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -133,7 +133,7 @@ function DataEditingScreen({sensorFileName, videoFileName, setProcessedData, set
         <div className={"video-editing-box" + (editingSensor ? " disabled" : "")}>
             <h1>Vídeo: {videoFileName}</h1>
             <video id="video-player" controls>
-                <source src={videoFileName} type="video/mp4"/>
+                <source src={"/video/"+videoFileName} type="video/mp4"/>
                 Your browser does not support the video tag.
             </video>
             <h3>Momento inicial: {videoStart}</h3>
@@ -144,7 +144,7 @@ function DataEditingScreen({sensorFileName, videoFileName, setProcessedData, set
         </div>
         <div className={"sensor-editing-box" + (!editingSensor ? " disabled" : "")}>
             <h1>Arquivo do sensor: {sensorFileName}</h1>
-            {sensorData!==0 ? <D3SensorChart data={sensorData}></D3SensorChart> : <Loading />}
+            {sensorData!==0 ? <D3SensorChart data={sensorData} onSelectTime={(time) => setSensorStart(time)} /> : <Loading />}
             {editingSensor ? <button onClick={() => setEditingSensor(false)}>Voltar ao Vídeo</button> : ""}
             {sensorData!==0 ?
               <>
