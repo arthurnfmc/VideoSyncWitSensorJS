@@ -41,14 +41,46 @@ app.post('/api/sensor-data', async (req, res) => {
 
 });
 
+
+
 app.post('/api/cut-data', async (req, res) => {
   const { data, start, end } = req.body;
   try {
     const cutData = await sensor.cutData(data, start, end);
+    //const currentTimeString = formatTimestamp(Date.now());
+    //sensor.saveTSV(cutData, './public/data/'+sensorFileName.split('.')[0]+'_cortado_'+currentTimeString+'.tsv');
     res.json(cutData);
   } catch (error) {
     console.error('Error cutting data:', error);
     res.status(500).send('Error cutting data');
+  }
+});
+
+function formatTimestamp(timestamp) {
+  const date = new Date(timestamp);
+
+  const pad = (n) => n.toString().padStart(2, '0');
+
+  const dia = pad(date.getDate());
+  const mes = pad(date.getMonth() + 1);
+  const ano = date.getFullYear();
+  const hora = pad(date.getHours());
+  const minuto = pad(date.getMinutes());
+  const segundo = pad(date.getSeconds());
+
+  return `${dia}_${mes}_${ano}_${hora}h_${minuto}m_${segundo}s`;
+}
+
+app.post('/api/save-data', async (req, res) => {
+  const { data, filename } = req.body;
+  const currentTimeString = formatTimestamp(Date.now());
+  const filepath = './public/data/'+filename+'_cortado_'+currentTimeString+'.tsv'
+  const success = await sensor.saveTSV(data, filepath);
+  if (success) {
+    res.json({ message: 'Salvo em '+filepath });
+    console.log('Dados salvos em:', filepath);
+  } else {
+    res.status(500).send('Erro ao salvar dados.');
   }
 });
 

@@ -8,7 +8,7 @@ const D3SensorLineChart = ({ data, preSelectedFeatures = [], videoRef, videoStar
   const xScaleRef = useRef(); // Ref para guardar xScale
   const [selectedFeatures, setSelectedFeatures] = useState(preSelectedFeatures);
 
-  const allFeatures = Object.keys(data[0]).filter(key => key !== 'seconds_passed');
+  const allFeatures = Object.keys(data[0]).filter(key => key !== 'seconds_passed' && key !== 'time');
 
   useEffect(() => {
     if (!selectedFeatures.length) return;

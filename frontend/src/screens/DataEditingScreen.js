@@ -92,6 +92,7 @@ function DataEditingScreen({sensorFileName, videoFileName, setProcessedData, set
         data: sensorData,
         start: sensorStart,
         end: autoCalculateSensorEnd ? sensorStart + (videoEnd - videoStart) : sensorEnd,
+        //sensorFileName: sensorFileName,
       }),
     })
     .then(response => response.json())

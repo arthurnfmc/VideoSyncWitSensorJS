@@ -6,7 +6,7 @@ const D3SensorChart = ({ data, preSelectedFeatures = [], onSelectTime }) => {
   const svgRef = useRef();
   const [selectedFeatures, setSelectedFeatures] = useState(preSelectedFeatures);
 
-  const allFeatures = Object.keys(data[0]).filter(key => key !== 'seconds_passed');
+  const allFeatures = Object.keys(data[0]).filter(key => key !== 'seconds_passed' && key !== 'time');
 
   useEffect(() => {
     if (!selectedFeatures.length) return;

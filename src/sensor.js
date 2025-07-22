@@ -142,7 +142,7 @@ async function readData(fpath, colsToDrop = [], config = {}) {
   }
 
   // Dropando time pois ja tem-se seconds_passed
-  df = dropColumns(df, ['time']);
+  //df = dropColumns(df, ['time']);
 
   return df;
 }
@@ -156,6 +156,17 @@ async function cutData(df, start, end) {
   return df;
 }
 
+// Salva um DataFrame em formato TSV
+async function saveTSV(df, fpath) {
+  try {
+    const tsvContent = d3.tsvFormat(df);
+    await fs.promises.writeFile(fpath, tsvContent, 'utf-8');
+    return true;
+  } catch (error) {
+    console.error('Erro ao salvar TSV:', error);
+    return false;
+  }
+}
 // Exemplo de uso:
 //readData("../public/data/20250415150255.tsv", ['DeviceName', 'Version()', 'Battery level(%)'], {
 //  groupMethod: 'seconds_passed', // 'NbyN', 'seconds_passed', 'noGroup'
@@ -167,4 +178,4 @@ async function cutData(df, start, end) {
 //  console.error("Erro ao processar dados:", err);
 //});
 
-module.exports = { readData, cutData };
+module.exports = { readData, cutData, saveTSV };
