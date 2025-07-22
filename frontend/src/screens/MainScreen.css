@@ -62,7 +62,6 @@ body {
 
 .main-screen-layout {
   display: flex;
-  flex-direction: column;
   align-items: center;
   padding: 40px;
   gap: 30px;
@@ -113,4 +112,17 @@ body {
 .select__multi-value__remove:hover {
   background-color: #1976d2;
   color: white;
+}
+
+.video-controls {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+}
+.video-controls button {
+    padding: 5px 10px;
+    font-size: 14px;
+    cursor: pointer;
 }
