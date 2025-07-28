@@ -3,8 +3,7 @@ import "./MainScreen.css";
 import { useState, useEffect, useRef } from "react";
 import D3SensorLineChart from "../components/D3SensorLineChart";
 
-function MainScreen({ videoFileName, processedData, processedVideoStartAndEnd }) {
-    const FRAME_RATE = 60;
+function MainScreen({ videoFileName, processedData, processedVideoStartAndEnd, FRAME_RATE}) {
     const FRAME_TIME = 1 / FRAME_RATE;
 
     const [loading, setLoading] = useState(true);

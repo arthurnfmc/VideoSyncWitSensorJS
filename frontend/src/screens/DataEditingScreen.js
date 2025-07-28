@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import D3SensorChart from '../components/D3SensorChart';
 import Loading from '../components/Loading';
 
-function DataEditingScreen({sensorFileName, videoFileName, setProcessedData, setProcessedVideoStartAndEnd, advance}) {
+function DataEditingScreen({sensorFileName, videoFileName, setProcessedData, setProcessedVideoStartAndEnd, videoFps, setVideoFps, advance}) {
   const [videoStart, setVideoStart] = useState(0);
   const [videoEnd, setVideoEnd] = useState(0);
   const [sensorData, setSensorData] = useState(0);
@@ -11,9 +11,17 @@ function DataEditingScreen({sensorFileName, videoFileName, setProcessedData, set
   const [sensorEnd, setSensorEnd] = useState(0);
   const [editingSensor, setEditingSensor] = useState(false);
   const [autoCalculateSensorEnd, setAutoCalculateSensorEnd] = useState(true);
+  const [interpolate, setInterpolate] = useState(false);
   
   // Get sensor data
   useEffect(() => {
+    let config = null;
+    if (interpolate) {
+      config = { camera_freq: videoFps };
+    }
+    else { 
+      config = { groupMethod: "NbyN", groupN: 4}
+    }
     fetch('/api/sensor-data', {
       method: 'POST',
       headers: {
@@ -22,10 +30,7 @@ function DataEditingScreen({sensorFileName, videoFileName, setProcessedData, set
       body: JSON.stringify({
         filepath: sensorFileName,
         colsToDrop: ["DeviceName", "Version()", "Battery level(%)"],
-        config: {
-          groupMethod: "NbyN",
-          groupN: 4
-        }
+        config: config
       }),
     })
     .then(response => response.json())
@@ -35,7 +40,7 @@ function DataEditingScreen({sensorFileName, videoFileName, setProcessedData, set
     .catch(error => {
       console.error('Error fetching sensor data:', error);
     });
-  }, [sensorFileName]);
+  }, [sensorFileName, interpolate]);
 
   // Get the video size
   useEffect(() => {
@@ -60,6 +65,10 @@ function DataEditingScreen({sensorFileName, videoFileName, setProcessedData, set
     const floatVal = parseFloat(e.target.value);
     setSensorEnd(isNaN(floatVal) ? 0.0 : floatVal);
   };
+
+  const handleInterpolateChange = () => {
+    setInterpolate(!interpolate);
+  }
 
   const handleAdvance = () => {
     // Validacao de inputs
@@ -141,6 +150,17 @@ function DataEditingScreen({sensorFileName, videoFileName, setProcessedData, set
             <h3>Momento final: {videoEnd}</h3>
             <button onClick={() => {setVideoTime(setVideoStart)}}>Definir Momento Inicial</button>
             <button onClick={() => {setVideoTime(setVideoEnd)}}>Definir Momento Final</button>
+            <div>
+              <label htmlFor="fps-input">FPS do vídeo:</label>
+              <input
+                id="fps-input"
+                type="number"
+                min="1"
+                step="1"
+                value={videoFps}
+                onChange={(e) => setVideoFps(parseInt(e.target.value) || 0)}
+              />
+            </div>
             {(!editingSensor && videoStart<videoEnd) ? <button onClick={() => setEditingSensor(true)}>Avançar para Sensor</button> : ""}
         </div>
         <div className={"sensor-editing-box" + (!editingSensor ? " disabled" : "")}>
@@ -161,6 +181,7 @@ function DataEditingScreen({sensorFileName, videoFileName, setProcessedData, set
               : ""}
               <button onClick={() => {setAutoCalculateSensorEnd(!autoCalculateSensorEnd);}}>
               {autoCalculateSensorEnd ? "Desativar Cálculo Automático do Fim" : "Ativar Cálculo Automático do Fim"} </button>
+              <button onClick={handleInterpolateChange}>{interpolate ? "Desativar Interpolação" : "Ativar Interpolação"}</button>
               <button onClick={handleAdvance}>Avançar</button>
         </div>
     </div>

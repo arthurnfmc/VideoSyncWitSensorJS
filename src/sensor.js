@@ -73,9 +73,16 @@ function interpolateToCameraFreq(data, cameraFreq) {
                   (after.seconds_passed - before.seconds_passed || 1);
 
     const row = { seconds_passed };
+
+    // Interpola colunas numéricas
     numericKeys.forEach(k => {
       row[k] = before[k] + ratio * (after[k] - before[k]);
     });
+
+    // Preserva a coluna time da linha anterior (ou mais próxima)
+    if ('time' in before) {
+      row.time = before.time;
+    }
 
     return row;
   });
