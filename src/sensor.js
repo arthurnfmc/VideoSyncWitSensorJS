@@ -2,11 +2,57 @@ const fs = require('fs');
 const d3 = require('d3-dsv');
 const dayjs = require('dayjs');
 const _ = require('lodash');
+const readline = require('readline');
 
 // Lê arquivo TSV (similar ao read_txt)
-function readTSV(fpath) {
-  const raw = fs.readFileSync(fpath, 'utf-8');
-  return d3.tsvParse(raw);
+async function readLargeTSVLineByLine(fpath) {
+  const fileStream = fs.createReadStream(fpath);
+  const rl = readline.createInterface({ input: fileStream });
+
+  const data = [];
+  let headers = [];
+  let chipTimeIndex = -1;
+
+  for await (const line of rl) {
+    if (!line.trim()) continue; // ignora linhas em branco
+    if (line.startsWith('StartTime:')) continue; // ignora linha de metadata
+
+    const values = line.split('\t');
+
+    // Primeira linha com nomes das colunas
+    if (headers.length === 0) {
+      headers = values.map(h => (h === 'ChipTime' ? 'time' : h));
+      chipTimeIndex = values.findIndex(h => h === 'ChipTime' || h === 'time');
+      continue;
+    }
+
+    // Garante mesmo número de colunas e valores
+    if (values.length !== headers.length) continue;
+
+    // Dropar se ChipTime estiver vazio ou ausente
+    if (chipTimeIndex === -1 || !values[chipTimeIndex]?.trim()) continue;
+
+    const row = {};
+    headers.forEach((h, i) => {
+      let val = values[i];
+
+      // Substitui vírgula decimal por ponto
+      if (/^-?\d+,\d+$/.test(val)) {
+        val = val.replace(',', '.');
+      }
+
+      row[h] = val;
+    });
+
+    // Duplica ChipTime como 'time' se quiser manter os dois campos
+    if (!('time' in row) && chipTimeIndex !== -1) {
+      row['time'] = values[chipTimeIndex];
+    }
+
+    data.push(row);
+  }
+
+  return data;
 }
 
 // Remove colunas (similar ao clean_data)
@@ -34,6 +80,9 @@ function processTimestamps(data) {
     row.time = fixMilliseconds(row.time);
     row.time = dayjs(row.time, 'YYYY-MM-DD HH:mm:ss:SSS');
   });
+
+  // Ordena os dados por tempo crescente
+  data.sort((a, b) => a.time.valueOf() - b.time.valueOf());
 
   const initial = data[0].time;
   data.forEach(row => {
@@ -138,9 +187,13 @@ function groupData(data, method, groupN = 4) {
 
 // Função para ler dados
 async function readData(fpath, colsToDrop = [], config = {}) {
-  let df = readTSV(fpath);
+  let df = await readLargeTSVLineByLine(fpath); // <- async/await aqui
+  if (!Array.isArray(df)) throw new Error("Arquivo não lido corretamente");
+
+  
   if (colsToDrop.length) df = dropColumns(df, colsToDrop);
   df = processTimestamps(df);
+  //df = df.filter(d => d.time !== '' && d.time !== null && d.time !== undefined);
 
   if (config.camera_freq) {
     df = interpolateToCameraFreq(df, config.camera_freq);
@@ -148,18 +201,22 @@ async function readData(fpath, colsToDrop = [], config = {}) {
     df = groupData(df, config.groupMethod, config.groupN);
   }
 
-  // Dropando time pois ja tem-se seconds_passed
-  //df = dropColumns(df, ['time']);
-
   return df;
 }
 
 async function cutData(df, start, end) {
   df = df.filter(row => row.seconds_passed >= start && row.seconds_passed <= end);
-  const minValue = Math.min(...df.map(row => row.seconds_passed));
+  
+  //const minValue = Math.min(...df.map(row => row.seconds_passed));
+  const minValue = df.reduce((min, row) => {
+    const val = parseFloat(row.seconds_passed);
+    return !isNaN(val) && val < min ? val : min;
+  }, Infinity);
+  
   df.forEach(row => {
     row.seconds_passed -= minValue; // Normalizando para começar do zero
   });
+  
   return df;
 }
 
