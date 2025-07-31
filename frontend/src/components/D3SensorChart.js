@@ -16,16 +16,21 @@ const D3SensorChart = ({ data, preSelectedFeatures = [], onSelectTime }) => {
     const height = 400;
     const margin = { top: 20, right: 30, bottom: 30, left: 50 };
 
-    // Limpa o SVG antes de redesenhar
     d3.select(svgRef.current).selectAll('*').remove();
 
     const svg = d3.select(svgRef.current)
       .attr('width', width + legendWidth)
       .attr('height', height);
 
+    const xExtent = d3.extent(data, d => d.seconds_passed);
+    const totalDuration = xExtent[1] - xExtent[0];
+    const minZoomWidth = 15;
+    const maxScale = totalDuration / minZoomWidth;
+
     const xScale = d3.scaleLinear()
-      .domain(d3.extent(data, d => d.seconds_passed))
+      .domain(xExtent)
       .range([margin.left, width - margin.right]);
+    const xScaleOriginal = xScale.copy();
 
     const yMin = d3.min(selectedFeatures, feature => d3.min(data, d => d[feature]));
     const yMax = d3.max(selectedFeatures, feature => d3.max(data, d => d[feature]));
@@ -36,7 +41,7 @@ const D3SensorChart = ({ data, preSelectedFeatures = [], onSelectTime }) => {
     const xAxis = d3.axisBottom(xScale);
     const yAxis = d3.axisLeft(yScale);
 
-    svg.append('g')
+    const xAxisG = svg.append('g')
       .attr('transform', `translate(0,${height - margin.bottom})`)
       .call(xAxis);
 
@@ -44,18 +49,37 @@ const D3SensorChart = ({ data, preSelectedFeatures = [], onSelectTime }) => {
       .attr('transform', `translate(${margin.left},0)`)
       .call(yAxis);
 
-    selectedFeatures.forEach((feature, index) => {
-      const lineGenerator = d3.line()
-        .x(d => xScale(d.seconds_passed))
-        .y(d => yScale(d[feature]));
+    // === clipPath para restringir a área visível ===
+    svg.append("defs")
+      .append("clipPath")
+      .attr("id", "clip")
+      .append("rect")
+      .attr("x", margin.left)
+      .attr("y", margin.top)
+      .attr("width", width - margin.left - margin.right)
+      .attr("height", height - margin.top - margin.bottom);
 
-      svg.append('path')
-        .datum(data)
-        .attr('fill', 'none')
-        .attr('stroke', d3.schemeCategory10[index % 10])
-        .attr('stroke-width', 2)
-        .attr('d', lineGenerator);
-    });
+    const lineGroup = svg.append('g')
+      .attr('class', 'lines')
+      .attr('clip-path', 'url(#clip)');
+
+    const drawLines = () => {
+      lineGroup.selectAll('path').remove();
+      selectedFeatures.forEach((feature, index) => {
+        const lineGenerator = d3.line()
+          .x(d => xScale(d.seconds_passed))
+          .y(d => yScale(d[feature]));
+
+        lineGroup.append('path')
+          .datum(data)
+          .attr('fill', 'none')
+          .attr('stroke', d3.schemeCategory10[index % 10])
+          .attr('stroke-width', 2)
+          .attr('d', lineGenerator);
+      });
+    };
+
+    drawLines();
 
     const legend = svg.append('g')
       .attr('class', 'legend')
@@ -84,7 +108,8 @@ const D3SensorChart = ({ data, preSelectedFeatures = [], onSelectTime }) => {
       .attr('stroke-width', 1)
       .attr('y1', margin.top)
       .attr('y2', height - margin.bottom)
-      .style('display', 'none');
+      .style('display', 'none')
+      .attr('clip-path', 'url(#clip)'); // restringe a linha também
 
     const overlay = svg.append('rect')
       .attr('width', width - margin.left - margin.right)
@@ -98,7 +123,6 @@ const D3SensorChart = ({ data, preSelectedFeatures = [], onSelectTime }) => {
       .on('mousemove', function (event) {
         const [mouseX] = d3.pointer(event);
         const clampedX = Math.max(margin.left, Math.min(mouseX, width - margin.right));
-
         verticalLine
           .attr('x1', clampedX)
           .attr('x2', clampedX)
@@ -116,6 +140,27 @@ const D3SensorChart = ({ data, preSelectedFeatures = [], onSelectTime }) => {
           onSelectTime(roundedTime);
         }
       });
+
+    // === Zoom com limites e restrição de deslocamento ===
+    const zoom = d3.zoom()
+      .scaleExtent([1, maxScale])
+      .translateExtent([[margin.left, 0], [width - margin.right, height]])
+      .extent([[margin.left, 0], [width - margin.right, height]])
+      .on('zoom', (event) => {
+        const t = event.transform;
+        xScale.domain(t.rescaleX(xScaleOriginal).domain());
+
+        // Limita o domínio para o intervalo dos dados
+        const domain = xScale.domain();
+        const newStart = Math.max(xExtent[0], domain[0]);
+        const newEnd = Math.min(xExtent[1], domain[1]);
+        xScale.domain([newStart, newEnd]);
+
+        xAxisG.call(xAxis);
+        drawLines();
+      });
+
+    svg.call(zoom);
 
   }, [data, selectedFeatures, onSelectTime]);
 
