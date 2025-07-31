@@ -3,17 +3,25 @@ import * as d3 from 'd3';
 import Select from 'react-select';
 import './D3SensorLineChart.css';
 
-const D3SensorLineChart = ({ data, preSelectedFeatures = [], videoRef, videoStartTime = 0}) => {
+const D3SensorLineChart = ({ data, preSelectedFeatures = [], videoRef, videoStartTime = 0 }) => {
   const svgRef = useRef();
-  const xScaleRef = useRef(); // Ref para guardar xScale
+  const xScaleRef = useRef();
+  const xDomainRef = useRef([0, 15]);
+
   const [selectedFeatures, setSelectedFeatures] = useState(preSelectedFeatures);
+  const [xDomain, setXDomain] = useState([0, 15]);
+  const [isUserDragging, setIsUserDragging] = useState(false);
 
   const allFeatures = Object.keys(data[0]).filter(key => key !== 'seconds_passed' && key !== 'time');
+
+  // Mantém xDomainRef sincronizado com o estado real
+  useEffect(() => {
+    xDomainRef.current = xDomain;
+  }, [xDomain]);
 
   useEffect(() => {
     if (!selectedFeatures.length) return;
 
-    // Tamanho e margens
     const legendWidth = 150;
     const width = 950 - legendWidth;
     const height = 400;
@@ -31,10 +39,10 @@ const D3SensorLineChart = ({ data, preSelectedFeatures = [], videoRef, videoStar
     // Escalas
     const xScale = d3
       .scaleLinear()
-      .domain(d3.extent(data, d => d.seconds_passed))
+      .domain(xDomain)
       .range([margin.left, width - margin.right]);
 
-    xScaleRef.current = xScale; // Salva para uso no outro useEffect
+    xScaleRef.current = xScale;
 
     const yMin = d3.min(selectedFeatures, feature => d3.min(data, d => d[feature]));
     const yMax = d3.max(selectedFeatures, feature => d3.max(data, d => d[feature]));
@@ -57,23 +65,25 @@ const D3SensorLineChart = ({ data, preSelectedFeatures = [], videoRef, videoStar
       .attr('transform', `translate(${margin.left},0)`)
       .call(yAxis);
 
-    // Desenha as linhas
+    // Desenha as linhas (somente dados visíveis)
     selectedFeatures.forEach((feature, index) => {
       const lineGenerator = d3
         .line()
         .x(d => xScale(d.seconds_passed))
         .y(d => yScale(d[feature]));
 
+      const filteredData = data.filter(d => d.seconds_passed >= xDomain[0] && d.seconds_passed <= xDomain[1]);
+
       svg
         .append('path')
-        .datum(data)
+        .datum(filteredData)
         .attr('fill', 'none')
         .attr('stroke', d3.schemeCategory10[index % 10])
         .attr('stroke-width', 2)
         .attr('d', lineGenerator);
     });
 
-    // Criar grupo de legenda
+    // Legenda
     const legend = svg.append('g')
       .attr('class', 'legend')
       .attr('transform', `translate(${width + 10}, ${margin.top})`);
@@ -95,7 +105,7 @@ const D3SensorLineChart = ({ data, preSelectedFeatures = [], videoRef, videoStar
         .attr('fill', '#000');
     });
 
-    // Linha vertical (cursor)
+    // Linha vermelha vertical
     svg.append('line')
       .attr('class', 'cursor-line')
       .attr('stroke', 'red')
@@ -105,19 +115,49 @@ const D3SensorLineChart = ({ data, preSelectedFeatures = [], videoRef, videoStar
       .attr('x1', xScale(0))
       .attr('x2', xScale(0));
 
-  }, [data, selectedFeatures]);
+    // Drag horizontal
+    const drag = d3.drag()
+      .on('start', () => setIsUserDragging(true))
+      .on('drag', (event) => {
+        const domain = xDomainRef.current;
+        const secondsPerPixel = (domain[1] - domain[0]) / (width - margin.left - margin.right);
+        const shiftSeconds = -event.dx * secondsPerPixel;
 
-  // Atualiza a posição da linha vertical com base no tempo do vídeo
+        let newStart = Math.max(0, domain[0] + shiftSeconds);
+        let newEnd = newStart + 15;
+
+        const maxTime = d3.max(data, d => d.seconds_passed);
+        if (newEnd > maxTime) {
+          newEnd = maxTime;
+          newStart = newEnd - 15;
+          if (newStart < 0) newStart = 0;
+        }
+
+        setXDomain([newStart, newEnd]);
+      })
+      .on('end', () => setIsUserDragging(false));
+
+    svg.call(drag);
+
+  }, [data, selectedFeatures, xDomain]);
+
+  // Atualiza linha do cursor conforme o tempo do vídeo
   useEffect(() => {
     if (!videoRef?.current || !xScaleRef.current) return;
 
-    let animationId;
     const svg = d3.select(svgRef.current);
+    let animationId;
 
     const updateLine = () => {
       const currentTime = videoRef.current.currentTime - videoStartTime;
-      const x = xScaleRef.current(currentTime);
 
+      if (!isUserDragging) {
+        const newStart = Math.max(0, currentTime - 15);
+        const newEnd = newStart + 15;
+        setXDomain([newStart, newEnd]);
+      }
+
+      const x = xScaleRef.current(currentTime);
       svg.select('.cursor-line')
         .attr('x1', x)
         .attr('x2', x);
@@ -128,7 +168,7 @@ const D3SensorLineChart = ({ data, preSelectedFeatures = [], videoRef, videoStar
     animationId = requestAnimationFrame(updateLine);
 
     return () => cancelAnimationFrame(animationId);
-  }, [videoRef, selectedFeatures, videoStartTime]); // dispara sempre que mudar o vídeo ou as features
+  }, [videoRef, selectedFeatures, videoStartTime, isUserDragging]);
 
   const featureOptions = allFeatures.map(f => ({ value: f, label: f }));
 
